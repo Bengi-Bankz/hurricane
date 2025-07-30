@@ -87,16 +87,16 @@ async function init(canvasContainer) {
     try {
         console.log("Initializing game...");
 
-        // Get container dimensions (should be 100vw x 100vh from CSS)
-        const containerWidth = canvasContainer.clientWidth || window.innerWidth;
-        const containerHeight = canvasContainer.clientHeight || window.innerHeight;
+        // Calculate available space (full viewport minus bottom panel)
+        const availableWidth = window.innerWidth;
+        const availableHeight = window.innerHeight - 120; // Subtract bottom panel height
 
         app = new Application();
         await app.init({
-            width: containerWidth,
-            height: containerHeight,
+            width: availableWidth,
+            height: availableHeight,
             backgroundColor: 0x003366,
-            resizeTo: canvasContainer // Makes canvas automatically resize with container
+            resizeTo: window // Resize to window instead of container
         });
 
         canvasContainer.appendChild(app.canvas);
@@ -877,7 +877,7 @@ function calculateWins() {
             const winAmount = getSymbolPayout(currentSymbol) * consecutiveCount;
             roundWinnings += winAmount;
             console.log(`🎯 Win on row ${row}: ${consecutiveCount}x ${currentSymbol} = ${winAmount}`);
-            
+
             // Create hurricane-style path overlay for this winning line
             createWinningLineOverlay(row, consecutiveCount, winAmount);
         }
@@ -890,17 +890,17 @@ function calculateWins() {
 function createWinningLineOverlay(row, consecutiveCount, winAmount) {
     // Create the hurricane path cone effect for winning lines
     const pathOverlay = new Graphics();
-    
+
     // Calculate the path from left to right across the winning symbols
     const startX = centerOffsetX;
     const startY = centerOffsetY + (row * cellSize) + (cellSize / 2); // Center of the row
     const endX = centerOffsetX + (consecutiveCount * cellSize);
     const endY = startY;
-    
+
     // Create the cone path - starts narrow and widens
     const coneWidth = cellSize * 0.3; // How wide the cone gets
     const coneStartWidth = cellSize * 0.1; // Starting width
-    
+
     // Draw the transparent red fill first
     pathOverlay.beginFill(0xff0000, 0.3); // Red with 30% transparency
     pathOverlay.moveTo(startX, startY - coneStartWidth);
@@ -909,23 +909,23 @@ function createWinningLineOverlay(row, consecutiveCount, winAmount) {
     pathOverlay.lineTo(startX, startY + coneStartWidth);
     pathOverlay.closePath();
     pathOverlay.endFill();
-    
+
     // Draw the top boundary line
     pathOverlay.lineStyle(3, 0xff0000, 0.8); // Red border
     pathOverlay.moveTo(startX, startY - coneStartWidth);
     pathOverlay.lineTo(endX, endY - coneWidth);
-    
+
     // Draw the bottom boundary line
     pathOverlay.moveTo(startX, startY + coneStartWidth);
     pathOverlay.lineTo(endX, endY + coneWidth);
-    
+
     // Add some pulsing animation
     pathOverlay.alpha = 0.8;
-    
+
     // Position the overlay
     app.stage.addChild(pathOverlay);
     winningLineOverlays.push(pathOverlay);
-    
+
     // Add pulsing animation to the winning line
     let pulseTime = 0;
     const pulseAnimation = () => {
@@ -936,7 +936,7 @@ function createWinningLineOverlay(row, consecutiveCount, winAmount) {
         }
     };
     pulseAnimation();
-    
+
     console.log(`🌪️ Created winning line overlay for row ${row} with ${consecutiveCount} symbols`);
 }
 
