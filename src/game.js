@@ -919,6 +919,27 @@ function createWinningLineOverlay(row, consecutiveCount, winAmount) {
     pathOverlay.moveTo(startX, startY + coneStartWidth);
     pathOverlay.lineTo(endX, endY + coneWidth);
 
+    // Draw dotted white center line for better visibility
+    pathOverlay.lineStyle(4, 0xffffff, 1); // Thicker white dotted line
+    const centerY = startY;
+    const dashLength = 15;
+    const gapLength = 8;
+    
+    // Draw dashes across the entire winning line
+    for (let x = startX; x < endX; x += dashLength + gapLength) {
+        const dashEnd = Math.min(x + dashLength, endX);
+        pathOverlay.moveTo(x, centerY);
+        pathOverlay.lineTo(dashEnd, centerY);
+    }
+
+    // Add a second thinner yellow line for extra visibility
+    pathOverlay.lineStyle(2, 0xffff00, 0.8); // Yellow line
+    for (let x = startX + 2; x < endX; x += dashLength + gapLength) {
+        const dashEnd = Math.min(x + dashLength - 4, endX);
+        pathOverlay.moveTo(x, centerY);
+        pathOverlay.lineTo(dashEnd, centerY);
+    }
+
     // Add some pulsing animation
     pathOverlay.alpha = 0.8;
 
@@ -971,4 +992,17 @@ function getSymbolPayout(symbol) {
     return payouts[symbol] || 1;
 }
 
-export { init, triggerHurricane };
+function getReelSpinningState() {
+    return reelSpinning || walking;
+}
+
+function getGameData() {
+    return {
+        totalWinnings: totalWinnings,
+        hurricaneCategory: hurricaneCategory,
+        isWalking: walking,
+        hurricaneCol: hurricaneCol
+    };
+}
+
+export { init, triggerHurricane, getReelSpinningState, getGameData };
