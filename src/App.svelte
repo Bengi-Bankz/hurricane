@@ -589,8 +589,8 @@
 
     /* Spin Button */
     .spin-btn {
-        width: 120px;
-        height: 80px;
+        width: 180px;
+        height: 60px;
         background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
         border: 3px solid #ffd700;
         border-radius: 15px;
@@ -808,25 +808,25 @@
 
     /* Spin Button Special Styling */
     .spin-light-button button.bt {
-        height: 200px; /* Increased from 160px */
+        height: 140px; /* Reduced from 200px */
     }
 
     .spin-light-button button.bt .button-holder.spin-button-holder {
-        height: 130px; /* Increased from 100px */
-        width: 180px; /* Increased from 140px */
+        height: 90px; /* Reduced from 130px */
+        width: 220px; /* Increased from 180px */
         background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
         border: 3px solid #ffd700;
         color: white;
     }
 
     .spin-light-button button.bt .light-holder {
-        width: 180px; /* Increased from 140px */
-        height: 200px; /* Increased from 160px */
+        width: 220px; /* Increased from 180px */
+        height: 140px; /* Reduced from 200px */
     }
 
     .spin-light-button button.bt .light-holder .light {
-        width: 220px; /* Increased from 180px */
-        height: 200px; /* Same as container height */
+        width: 260px; /* Increased from 220px */
+        height: 140px; /* Reduced from 200px */
     }
 
     .spin-light-button button.bt:hover .button-holder.spin-button-holder {
