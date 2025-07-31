@@ -7,10 +7,16 @@
     let isSpinning = false;
     let gameLoaded = false;
     let showLightning = false;
+    let showGameInfo = false;
     let gameData = {
         totalWinnings: 0,
         hurricaneCategory: 0
     };
+    
+    // Game info data
+    let gameName = "Hurricane Chase";
+    let tagline = "Monster Storm Bank Rolls into the Gulf and is Building";
+    let maxWin = "55,555X base bet";
     
     onMount(() => {
         if (canvasContainer) {
@@ -57,6 +63,10 @@
         }
     }
     
+    function toggleGameInfo() {
+        showGameInfo = !showGameInfo;
+    }
+    
     // Reactive computed balance
     $: currentBalance = balance + gameData.totalWinnings;
 </script><div class="game-layout">
@@ -85,34 +95,6 @@
 
         <div class="action-buttons">
             <div class="light-button">
-                <button class="bt action-btn bonus">
-                    <div class="light-holder">
-                        <div class="dot"></div>
-                        <div class="light"></div>
-                    </div>
-                    <div class="button-holder">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-                        </svg>
-                        <p>Bonus</p>
-                    </div>
-                </button>
-            </div>
-            <div class="light-button">
-                <button class="bt action-btn menu">
-                    <div class="light-holder">
-                        <div class="dot"></div>
-                        <div class="light"></div>
-                    </div>
-                    <div class="button-holder">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-                            <path d="M12 8c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zm0 2c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2zm0 6c-1.1 0-2 .9-2 2s.9 2 2 2 2-.9 2-2-.9-2-2-2z"/>
-                        </svg>
-                        <p>Settings</p>
-                    </div>
-                </button>
-            </div>
-            <div class="light-button">
                 <button class="bt action-btn info">
                     <div class="light-holder">
                         <div class="dot"></div>
@@ -123,6 +105,34 @@
                             <path d="M11 17h2v-6h-2v6zm1-15C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15h2v-2h-2v2zm0-4h2V9h-2v4z"/>
                         </svg>
                         <p>Paytable</p>
+                    </div>
+                </button>
+            </div>
+            <div class="light-button">
+                <button on:click={toggleGameInfo} class="bt action-btn menu">
+                    <div class="light-holder">
+                        <div class="dot"></div>
+                        <div class="light"></div>
+                    </div>
+                    <div class="button-holder">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zM12 20c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
+                        </svg>
+                        <p>Game Info</p>
+                    </div>
+                </button>
+            </div>
+            <div class="light-button">
+                <button class="bt action-btn bonus">
+                    <div class="light-holder">
+                        <div class="dot"></div>
+                        <div class="light"></div>
+                    </div>
+                    <div class="button-holder">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+                            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                        </svg>
+                        <p>Bonus</p>
                     </div>
                 </button>
             </div>
@@ -145,6 +155,245 @@
             </div>
         </div>
     </div>
+
+    <!-- Game Info Modal -->
+    {#if showGameInfo}
+        <div class="modal-overlay" on:click={toggleGameInfo}>
+            <div class="modal-content" on:click|stopPropagation>
+                <div class="modal-header">
+                    <h1 class="modal-title">GAME INFO – {gameName}</h1>
+                    <button class="close-btn" on:click={toggleGameInfo}>×</button>
+                </div>
+                <div class="modal-body">
+                    <p class="tagline">{tagline}</p>
+
+                    <section class="info-section">
+                        <h2 class="section-title about">ABOUT THE GAME</h2>
+                        <p class="section-text">
+                            Hurricane Chase is a catastrophic 5x5 storm-themed slot where volatile weather meets volatile winnings.
+                            Featuring Walking Wilds, Expanding Multipliers, and multiple Scatter-based bonus modes, it delivers a max win of {maxWin}.
+                        </p>
+                    </section>
+
+                    <section class="info-section">
+                        <h2 class="section-title features">FEATURES</h2>
+                        <div class="feature-item">
+                            <h3 class="feature-title">Tracking the Tropics (3 Scatters)</h3>
+                            <p class="feature-text">
+                                Initiates when 3 Stormtracker Scatter symbols land. The storm enters the board and walks left each spin,
+                                increasing its category multiplier with each move. If it reaches the edge, Landfall occurs — multiplying the total win by the storm's final category.
+                            </p>
+                        </div>
+                        <div class="feature-item">
+                            <h3 class="feature-title">Hurricane Alley (4 Scatters)</h3>
+                            <p class="feature-text">
+                                Triggers 10 free spins with a guaranteed Category 2+ storm and added Wilds with multipliers across reels.
+                            </p>
+                        </div>
+                        <div class="feature-item">
+                            <h3 class="feature-title">Cyclone Zone (5 Scatters)</h3>
+                            <p class="feature-text">
+                                Super Bonus round with 15 free spins, stacked Wilds, and progressive storm categories that can reach up to Cat 5 for max Landfall multipliers.
+                            </p>
+                        </div>
+                    </section>
+
+                    <section class="info-section">
+                        <h2 class="section-title walking-wild">WALKING WILD – STORMTRACKER</h2>
+                        <p class="section-text">
+                            When triggered, the Stormtracker Wild moves left each spin, applying its current category multiplier (1x to 5x) to line payouts it participates in.
+                            Upon reaching reel 1, it multiplies the total spin win by the final storm category (Landfall).
+                        </p>
+                    </section>
+
+                    <section class="info-section">
+                        <h2 class="section-title payouts">SYMBOL PAYOUTS</h2>
+                        <div class="symbol-payouts-grid">
+                            <!-- Low Symbols Row 1 -->
+                            <div class="symbol-group">
+                                <div class="symbol-header low-symbols">10</div>
+                                <div class="symbol-card">
+                                    <div class="symbol-image" style="background-position: calc(-522px * 0.4838) calc(-738px * 0.4838);"></div>
+                                    <div class="payout-values">
+                                        <p>5 – 1.00x</p>
+                                        <p>4 – 0.50x</p>
+                                        <p>3 – 0.10x</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="symbol-group">
+                                <div class="symbol-header low-symbols">JACK</div>
+                                <div class="symbol-card">
+                                    <div class="symbol-image" style="background-position: calc(-456px * 0.4838) calc(-128px * 0.4838);"></div>
+                                    <div class="payout-values">
+                                        <p>5 – 1.25x</p>
+                                        <p>4 – 0.60x</p>
+                                        <p>3 – 0.15x</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="symbol-group">
+                                <div class="symbol-header low-symbols">QUEEN</div>
+                                <div class="symbol-card">
+                                    <div class="symbol-image" style="background-position: calc(-294px * 0.4838) calc(-455px * 0.4838);"></div>
+                                    <div class="payout-values">
+                                        <p>5 – 1.50x</p>
+                                        <p>4 – 0.75x</p>
+                                        <p>3 – 0.20x</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="symbol-group">
+                                <div class="symbol-header low-symbols">KING</div>
+                                <div class="symbol-card">
+                                    <div class="symbol-image" style="background-position: calc(-456px * 0.4838) calc(-2px * 0.4838);"></div>
+                                    <div class="payout-values">
+                                        <p>5 – 2.00x</p>
+                                        <p>4 – 1.00x</p>
+                                        <p>3 – 0.25x</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="symbol-group">
+                                <div class="symbol-header low-symbols">ACE</div>
+                                <div class="symbol-card">
+                                    <div class="symbol-image" style="background-position: calc(-396px * 0.4838) calc(-634px * 0.4838);"></div>
+                                    <div class="payout-values">
+                                        <p>5 – 2.50x</p>
+                                        <p>4 – 1.25x</p>
+                                        <p>3 – 0.30x</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Mid Symbols Row 2 -->
+                            <div class="symbol-group">
+                                <div class="symbol-header mid-symbols">WINDSOCK</div>
+                                <div class="symbol-card">
+                                    <div class="symbol-image" style="background-position: calc(-2px * 0.4838) calc(-2px * 0.4838);"></div>
+                                    <div class="payout-values">
+                                        <p>5 – 3.00x</p>
+                                        <p>4 – 1.50x</p>
+                                        <p>3 – 0.50x</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="symbol-group">
+                                <div class="symbol-header mid-symbols">WATER</div>
+                                <div class="symbol-card">
+                                    <img src="/water.png" alt="Water" class="symbol-image-standalone" />
+                                    <div class="payout-values">
+                                        <p>5 – 4.00x</p>
+                                        <p>4 – 2.00x</p>
+                                        <p>3 – 0.60x</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="symbol-group">
+                                <div class="symbol-header mid-symbols">RADIO</div>
+                                <div class="symbol-card">
+                                    <div class="symbol-image" style="background-position: calc(-294px * 0.4838) calc(-329px * 0.4838);"></div>
+                                    <div class="payout-values">
+                                        <p>5 – 5.00x</p>
+                                        <p>4 – 2.50x</p>
+                                        <p>3 – 0.75x</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="symbol-group">
+                                <div class="symbol-header top-symbols">FLASHLIGHT</div>
+                                <div class="symbol-card">
+                                    <div class="symbol-image" style="background-position: calc(-456px * 0.4838) calc(-254px * 0.4838);"></div>
+                                    <div class="payout-values">
+                                        <p>5 – 7.50x</p>
+                                        <p>4 – 3.75x</p>
+                                        <p>3 – 1.00x</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="symbol-group">
+                                <div class="symbol-header top-symbols">EVAC SIGN</div>
+                                <div class="symbol-card">
+                                    <div class="symbol-image" style="background-position: calc(-420px * 0.4838) calc(-380px * 0.4838);"></div>
+                                    <div class="payout-values">
+                                        <p>5 – 10.00x</p>
+                                        <p>4 – 5.00x</p>
+                                        <p>3 – 1.25x</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Special Symbols Row 3 -->
+                            <div class="symbol-group special-wild">
+                                <div class="symbol-header wild-symbols">WILD SYMBOLS</div>
+                                <div class="symbol-card">
+                                    <div class="wild-variants">
+                                        <img src="/wild.png" alt="Wild 1x" class="wild-image" />
+                                        <img src="/wild2x.png" alt="Wild 2x" class="wild-image" />
+                                        <img src="/wild3x.png" alt="Wild 3x" class="wild-image" />
+                                        <img src="/wild4x.png" alt="Wild 4x" class="wild-image" />
+                                        <img src="/wild5x.png" alt="Wild 5x" class="wild-image" />
+                                    </div>
+                                    <div class="payout-values">
+                                        <p>Substitutes for all symbols</p>
+                                        <p>Multipliers: 1x, 2x, 3x, 4x, 5x</p>
+                                        <p>Walking Wild feature</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="symbol-group special-scatter">
+                                <div class="symbol-header scatter-symbols">SCATTER</div>
+                                <div class="symbol-card">
+                                    <div class="symbol-image" style="background-position: calc(-2px * 0.4838) calc(-128px * 0.4838);"></div>
+                                    <div class="payout-values">
+                                        <p>3+ – Tracking the Tropics</p>
+                                        <p>4+ – Hurricane Alley</p>
+                                        <p>5 – Cyclone Zone</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section class="info-section">
+                        <h2 class="section-title ways">WAYS TO WIN</h2>
+                        <p class="section-text">
+                            Win if matching symbols appear in any of the 15 predefined line paths starting from leftmost reel. Multiple wins are added together.
+                        </p>
+                    </section>
+
+                    <section class="info-section">
+                        <h2 class="section-title bonus">BONUS BUY & RTP</h2>
+                        <p class="section-text">
+                            Buy into Tracking the Tropics, Hurricane Alley, or Cyclone Zone directly via the Bonus Buy feature. RTP:
+                        </p>
+                        <ul class="rtp-list">
+                            <li>Tracking the Tropics: 97.21%</li>
+                            <li>Hurricane Alley: 97.44%</li>
+                            <li>Cyclone Zone: 97.50%</li>
+                        </ul>
+                    </section>
+
+                    <section class="info-section">
+                        <h2 class="section-title general">GENERAL</h2>
+                        <ul class="general-list">
+                            <li>Bet range: $0.20 to $500</li>
+                            <li>Spin with mouse, spacebar, or touch</li>
+                            <li>Max win: {maxWin}</li>
+                            <li>Autoplay and Turbo available</li>
+                        </ul>
+                    </section>
+
+                    <section class="info-section">
+                        <h2 class="section-title terms">TERMS & CONDITIONS</h2>
+                        <p class="terms-text">
+                            Malfunction voids all plays and pays. This game uses a random number generator and is not based on a physical machine. Hurricane Chase (v1.0.0).
+                        </p>
+                    </section>
+                </div>
+            </div>
+        </div>
+    {/if}
 </div>
 
 <style>
@@ -374,8 +623,8 @@
     }
 
     .spin-image {
-        width: 70px;
-        height: 70px;
+        width: 110px; /* Increased from 85px */
+        height: 110px; /* Increased from 85px */
         object-fit: contain;
         filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
     }
@@ -383,7 +632,7 @@
     .spin-text {
         position: absolute;
         color: black;
-        font-size: 1.4rem;
+        font-size: 2.0rem; /* Increased from 1.6rem */
         font-weight: bold;
         text-shadow: 
             1px 1px 2px rgba(255, 255, 255, 0.8),
@@ -539,25 +788,25 @@
 
     /* Spin Button Special Styling */
     .spin-light-button button.bt {
-        height: 140px;
+        height: 200px; /* Increased from 160px */
     }
 
     .spin-light-button button.bt .button-holder.spin-button-holder {
-        height: 80px;
-        width: 120px;
+        height: 130px; /* Increased from 100px */
+        width: 180px; /* Increased from 140px */
         background: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
         border: 3px solid #ffd700;
         color: white;
     }
 
     .spin-light-button button.bt .light-holder {
-        width: 120px;
-        height: 140px;
+        width: 180px; /* Increased from 140px */
+        height: 200px; /* Increased from 160px */
     }
 
     .spin-light-button button.bt .light-holder .light {
-        width: 160px;
-        height: 140px;
+        width: 220px; /* Increased from 180px */
+        height: 200px; /* Same as container height */
     }
 
     .spin-light-button button.bt:hover .button-holder.spin-button-holder {
@@ -707,6 +956,361 @@
             width: 80px;
             height: 50px;
             font-size: 0.8rem;
+        }
+    }
+
+    /* Game Info Modal Styles */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.85);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 1000;
+        backdrop-filter: blur(5px);
+    }
+
+    .modal-content {
+        background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f1419 100%);
+        border: 2px solid #00d4ff;
+        border-radius: 12px;
+        width: 90%;
+        max-width: 800px;
+        max-height: 85vh;
+        overflow-y: auto;
+        box-shadow: 
+            0 0 30px rgba(0, 212, 255, 0.5),
+            inset 0 0 20px rgba(0, 212, 255, 0.1);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 20px 25px;
+        border-bottom: 2px solid rgba(0, 212, 255, 0.3);
+        background: linear-gradient(90deg, rgba(0, 212, 255, 0.1) 0%, transparent 100%);
+    }
+
+    .modal-title {
+        color: #00d4ff;
+        font-family: 'Orbitron', monospace;
+        font-size: 24px;
+        font-weight: 900;
+        text-shadow: 0 0 10px rgba(0, 212, 255, 0.8);
+        margin: 0;
+    }
+
+    .close-btn {
+        background: none;
+        border: 2px solid #00d4ff;
+        color: #00d4ff;
+        font-size: 24px;
+        font-weight: bold;
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+
+    .close-btn:hover {
+        background: #00d4ff;
+        color: #0f1419;
+        box-shadow: 0 0 15px rgba(0, 212, 255, 0.6);
+        transform: scale(1.1);
+    }
+
+    .modal-body {
+        padding: 25px;
+    }
+
+    .tagline {
+        color: #ffd700;
+        font-family: 'Orbitron', monospace;
+        font-size: 18px;
+        font-weight: 700;
+        text-align: center;
+        margin-bottom: 30px;
+        text-shadow: 0 0 8px rgba(255, 215, 0, 0.6);
+    }
+
+    .info-section {
+        margin-bottom: 25px;
+        padding: 20px;
+        background: linear-gradient(135deg, rgba(0, 212, 255, 0.05) 0%, rgba(255, 215, 0, 0.02) 100%);
+        border-radius: 8px;
+        border-left: 3px solid #00d4ff;
+    }
+
+    .section-title {
+        color: #00d4ff;
+        font-family: 'Orbitron', monospace;
+        font-size: 16px;
+        font-weight: 800;
+        margin-bottom: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        text-shadow: 0 0 6px rgba(0, 212, 255, 0.5);
+    }
+
+    .section-title.features {
+        color: #ffd700;
+        text-shadow: 0 0 6px rgba(255, 215, 0, 0.5);
+    }
+
+    .section-title.walking-wild {
+        color: #ff6b35;
+        text-shadow: 0 0 6px rgba(255, 107, 53, 0.5);
+    }
+
+    .section-title.payouts {
+        color: #32cd32;
+        text-shadow: 0 0 6px rgba(50, 205, 50, 0.5);
+    }
+
+    .section-text {
+        color: #e0e6ed;
+        font-family: 'Arial', sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+        margin: 0;
+    }
+
+    .feature-item {
+        margin-bottom: 15px;
+        padding: 15px;
+        background: rgba(255, 215, 0, 0.08);
+        border-radius: 6px;
+        border-left: 2px solid #ffd700;
+    }
+
+    .feature-title {
+        color: #ffd700;
+        font-family: 'Orbitron', monospace;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 8px;
+        text-shadow: 0 0 4px rgba(255, 215, 0, 0.4);
+    }
+
+    .feature-text {
+        color: #e0e6ed;
+        font-family: 'Arial', sans-serif;
+        font-size: 13px;
+        line-height: 1.5;
+        margin: 0;
+    }
+
+    .rtp-list, .general-list {
+        color: #e0e6ed;
+        font-family: 'Arial', sans-serif;
+        font-size: 14px;
+        line-height: 1.6;
+        margin: 10px 0 0 20px;
+        padding: 0;
+    }
+
+    .rtp-list li, .general-list li {
+        margin-bottom: 8px;
+    }
+
+    .terms-text {
+        color: #b0b6bd;
+        font-family: 'Arial', sans-serif;
+        font-size: 12px;
+        line-height: 1.5;
+        font-style: italic;
+        margin: 0;
+    }
+
+    /* Scrollbar styling for modal */
+    .modal-content::-webkit-scrollbar {
+        width: 8px;
+    }
+
+    .modal-content::-webkit-scrollbar-track {
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 4px;
+    }
+
+    .modal-content::-webkit-scrollbar-thumb {
+        background: linear-gradient(180deg, #00d4ff 0%, #0099cc 100%);
+        border-radius: 4px;
+    }
+
+    .modal-content::-webkit-scrollbar-thumb:hover {
+        background: linear-gradient(180deg, #00e6ff 0%, #00b3e6 100%);
+    }
+
+    /* Symbol Payouts Grid Styling */
+    .symbol-payouts-grid {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    .symbol-group {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 8px;
+        padding: 15px;
+        border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .symbol-group.special-wild {
+        grid-column: span 2;
+    }
+
+    .symbol-group.special-scatter {
+        grid-column: span 1;
+    }
+
+    .symbol-header {
+        font-family: 'Orbitron', monospace;
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        margin-bottom: 10px;
+        text-align: center;
+    }
+
+    .symbol-header.low-symbols {
+        color: #00d4ff;
+        text-shadow: 0 0 4px rgba(0, 212, 255, 0.5);
+    }
+
+    .symbol-header.mid-symbols {
+        color: #ffd700;
+        text-shadow: 0 0 4px rgba(255, 215, 0, 0.5);
+    }
+
+    .symbol-header.top-symbols {
+        color: #ff6b35;
+        text-shadow: 0 0 4px rgba(255, 107, 53, 0.5);
+    }
+
+    .symbol-header.wild-symbols {
+        color: #32cd32;
+        text-shadow: 0 0 4px rgba(50, 205, 50, 0.5);
+    }
+
+    .symbol-header.scatter-symbols {
+        color: #ff1493;
+        text-shadow: 0 0 4px rgba(255, 20, 147, 0.5);
+    }
+
+    .symbol-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .symbol-image {
+        width: 60px;
+        height: 60px;
+        border-radius: 6px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        background: rgba(0, 0, 0, 0.5);
+        background-image: url('/cat-sprites.png');
+        background-repeat: no-repeat;
+        /* Scale sprite sheet down to fit 60x60 containers */
+        /* Original sprite sheet: 2630x1084, symbols: 124x124 */
+        /* Scale factor: 60/124 = 0.4838 */
+        background-size: calc(2630px * 0.4838) calc(1084px * 0.4838);
+    }
+
+    /* Standalone image styling for symbols like water.png */
+    .symbol-image-standalone {
+        width: 60px;
+        height: 60px;
+        border-radius: 6px;
+        border: 2px solid rgba(255, 255, 255, 0.2);
+        background: rgba(0, 0, 0, 0.5);
+        object-fit: contain;
+    }
+
+    .wild-variants {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 5px;
+        justify-content: center;
+        max-width: 150px;
+    }
+
+    .wild-image {
+        width: 25px;
+        height: 25px;
+        object-fit: contain;
+        border-radius: 4px;
+        border: 1px solid rgba(50, 205, 50, 0.3);
+    }
+
+    .payout-values {
+        text-align: center;
+        font-size: 11px;
+        line-height: 1.4;
+    }
+
+    .payout-values p {
+        margin: 2px 0;
+        color: #e0e6ed;
+    }
+
+    /* Responsive grid for smaller screens */
+    @media (max-width: 768px) {
+        .symbol-payouts-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        
+        .symbol-group.special-wild {
+            grid-column: span 3;
+        }
+        
+        .symbol-group.special-scatter {
+            grid-column: span 3;
+        }
+        
+        .symbol-image {
+            width: 50px;
+            height: 50px;
+        }
+        
+        .wild-image {
+            width: 20px;
+            height: 20px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .symbol-payouts-grid {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .symbol-group {
+            padding: 10px;
+        }
+        
+        .symbol-image {
+            width: 40px;
+            height: 40px;
+        }
+        
+        .payout-values {
+            font-size: 10px;
         }
     }
 </style>
