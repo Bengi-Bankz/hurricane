@@ -96,6 +96,7 @@ const wildPlaceholderSprites = [
 
 let catSheet; // For the new cat sprites
 let backgroundSprite; // Game background
+let gameTitleSprite; // Game title at top left
 let reelFrameSprite; // Reel outline
 let walkingWildTint = null; // For red flash effect
 let categoryLabels = {}; // For category1.png through category5.png
@@ -157,6 +158,11 @@ async function init(canvasContainer) {
         const frameTexture = await Assets.load("/framehc.png");
         console.log("Reel frame loaded successfully");
 
+        // Load game title
+        console.log("Loading game title...");
+        await Assets.load("/gametitle.png");
+        console.log("Game title loaded successfully");
+
         // For backwards compatibility, set sheet to catSheet since all symbols are now there
         sheet = catSheet;
 
@@ -167,6 +173,15 @@ async function init(canvasContainer) {
         backgroundSprite.x = 0;
         backgroundSprite.y = 0;
         app.stage.addChild(backgroundSprite);
+
+        // Add game title at top right corner
+        gameTitleSprite = new Sprite(Assets.get("/gametitle.png"));
+        // Scale the title to appropriate size if needed
+        const titleScale = Math.min(app.screen.width * 0.3 / gameTitleSprite.width, 1);
+        gameTitleSprite.scale.set(titleScale);
+        gameTitleSprite.x = app.screen.width - gameTitleSprite.width - 20; // 20px from right edge
+        gameTitleSprite.y = 20; // 20px from top edge
+        app.stage.addChild(gameTitleSprite);
 
         // Calculate center offsets for game elements
         const gameWidth = COLS * cellSize; // 620px
@@ -200,8 +215,8 @@ async function init(canvasContainer) {
 
 function drawReels() {
     // Clear existing reels and wild placeholders (but keep background)
-    // Remove all children except background and reel frame
-    const childrenToKeep = [backgroundSprite, reelFrameSprite].filter(Boolean);
+    // Remove all children except background, game title, and reel frame
+    const childrenToKeep = [backgroundSprite, gameTitleSprite, reelFrameSprite].filter(Boolean);
     const childrenToRemove = app.stage.children.filter(child => !childrenToKeep.includes(child));
     childrenToRemove.forEach(child => app.stage.removeChild(child));
 
