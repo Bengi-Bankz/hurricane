@@ -49,27 +49,23 @@ const symbolNames = [
 // Define all 15 paylines for 5x5 grid
 // Each payline is an array of [col, row] coordinates
 const paylines = [
-    // Horizontal lines (1-5)
-    [[0,0], [1,0], [2,0], [3,0], [4,0]], // Line 1: Top row
-    [[0,1], [1,1], [2,1], [3,1], [4,1]], // Line 2: Second row
-    [[0,2], [1,2], [2,2], [3,2], [4,2]], // Line 3: Middle row
-    [[0,3], [1,3], [2,3], [3,3], [4,3]], // Line 4: Fourth row
-    [[0,4], [1,4], [2,4], [3,4], [4,4]], // Line 5: Bottom row
-    
-    // Diagonal lines (6-9)
-    [[0,0], [1,1], [2,2], [3,3], [4,4]], // Line 6: Top-left to bottom-right diagonal
-    [[0,1], [1,2], [2,3], [3,4], [4,4]], // Line 7: Second diagonal down-right
-    [[0,4], [1,3], [2,2], [3,1], [4,0]], // Line 8: Bottom-left to top-right diagonal
-    [[0,3], [1,2], [2,1], [3,0], [4,0]], // Line 9: Second diagonal up-right
-    
-    // Zigzag and special patterns (10-15)
-    [[0,1], [1,0], [2,1], [3,2], [4,1]], // Line 10: V-shape up
-    [[0,3], [1,4], [2,3], [3,2], [4,3]], // Line 11: V-shape down
-    [[0,2], [1,1], [2,0], [3,1], [4,2]], // Line 12: Mountain pattern
-    [[0,2], [1,3], [2,4], [3,3], [4,2]], // Line 13: Valley pattern
-    [[0,0], [1,2], [2,1], [3,3], [4,2]], // Line 14: Zigzag pattern 1
-    [[0,4], [1,2], [2,3], [3,1], [4,2]]  // Line 15: Zigzag pattern 2
+    [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]], // Top row
+    [[0, 1], [1, 1], [2, 1], [3, 1], [4, 1]],
+    [[0, 2], [1, 2], [2, 2], [3, 2], [4, 2]],
+    [[0, 3], [1, 3], [2, 3], [3, 3], [4, 3]],
+    [[0, 4], [1, 4], [2, 4], [3, 4], [4, 4]], // Bottom row
+    [[0, 0], [1, 1], [2, 0], [3, 1], [4, 0]], // V down
+    [[0, 1], [1, 0], [2, 1], [3, 0], [4, 1]], // V up
+    [[0, 1], [1, 2], [2, 1], [3, 2], [4, 1]], // V down middle
+    [[0, 2], [1, 1], [2, 2], [3, 1], [4, 2]], // V up middle
+    [[0, 4], [1, 3], [2, 4], [3, 3], [4, 4]], // W bottom
+    [[0, 3], [1, 4], [2, 3], [3, 4], [4, 3]], // W flipped
+    [[0, 3], [1, 2], [2, 3], [3, 2], [4, 3]], // Middle bounce
+    [[0, 2], [1, 3], [2, 2], [3, 3], [4, 2]], // Diagonal bounce
+    [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], // TL to BR diagonal
+    [[0, 4], [1, 3], [2, 2], [3, 1], [4, 0]]  // BL to TR diagonal
 ];
+
 
 // Hurricane category sprites
 const hurricaneSprites = [
@@ -151,6 +147,31 @@ async function init(canvasContainer) {
             console.log("Wild placeholders loaded successfully");
         } catch (error) {
             console.warn("Some wild placeholders not found, will use ace wild as fallback:", error.message);
+        }
+
+        // Load standalone walking wild assets
+        console.log("Loading walking wild assets...");
+        try {
+            // Load scatter expanding image (note: the file has a hyphen)
+            console.log("Loading scatter-expanding.png...");
+            await Assets.load("/scatter-expanding.png");
+            console.log("✓ scatter-expanding.png loaded");
+            
+            // Load walking wild reel image
+            console.log("Loading walkingwildreel.png...");
+            await Assets.load("/walkingwildreel.png");
+            console.log("✓ walkingwildreel.png loaded");
+            
+            // Load individual cat images for slot animation
+            console.log("Loading cat images...");
+            for (let i = 1; i <= 5; i++) {
+                await Assets.load(`/cat${i}.png`);
+                console.log(`✓ cat${i}.png loaded`);
+            }
+            console.log("Walking wild assets loaded successfully");
+        } catch (error) {
+            console.warn("Some walking wild assets not found:", error.message);
+            console.error("Detailed error:", error);
         }
 
         // Load standalone reel frame
@@ -352,71 +373,167 @@ function hurricaneHitsReel() {
 }
 
 function showScatterAndSelection() {
-    // Show scatter symbol on the hit column
+    // Show scatter symbol on the hit column using scatter-expanding.png
     const scatterContainer = new Container();
-    const scatterSprite = new Sprite(catSheet.textures[scatterSpriteName]);
+    const scatterSprite = new Sprite(Assets.get("/scatter-expanding.png"));
     scatterSprite.width = cellSize;
     scatterSprite.height = cellSize;
     scatterSprite.x = hurricaneCol * cellSize + centerOffsetX;
     scatterSprite.y = cellSize * 2 + centerOffsetY; // Middle row
 
+    // Hide the reel container for the hurricane column to prevent symbols showing behind
+    if (reelContainers[hurricaneCol]) {
+        reelContainers[hurricaneCol].visible = false;
+    }
+
     app.stage.addChild(scatterSprite);
     app.stage.addChild(scatterContainer);
 
-    // Start selection animation - cycle through category sprites with motion blur
-    let currentSelection = 0;
-    let selectionSpeed = 100; // Start fast
-    const maxSelections = 20; // Number of cycles before stopping
-    let selectionCount = 0;
+    // Create slot machine reel container with mask for the black middle area
+    const slotReelContainer = new Container();
+    slotReelContainer.x = hurricaneCol * cellSize + centerOffsetX;
+    slotReelContainer.y = centerOffsetY;
 
-    const selectionInterval = setInterval(() => {
-        // Remove previous selection sprite
-        if (scatterContainer.children.length > 0) {
-            scatterContainer.removeChildren();
+    // Add black layer behind everything first
+    const blackLayer = new Graphics();
+    blackLayer.beginFill(0x000000);
+    blackLayer.drawRect(0, 0, cellSize, cellSize * ROWS);
+    blackLayer.endFill();
+    slotReelContainer.addChild(blackLayer);
+
+    // Create a separate container for the animated cat sprites FIRST (so it's behind walkingwildreel)
+    const catAnimationContainer = new Container();
+    
+    // Create mask for the slot reel (black area in middle where cats will animate)
+    const reelMask = new Graphics();
+    reelMask.beginFill(0x000000);
+    reelMask.drawRect(cellSize * 0.1, cellSize * 1.8, cellSize * 0.8, cellSize * 1.4); // Middle area of column
+    reelMask.endFill();
+    
+    catAnimationContainer.addChild(reelMask);
+    catAnimationContainer.mask = reelMask;
+    slotReelContainer.addChild(catAnimationContainer);
+
+    // Add walkingwildreel.png AFTER the cat animation container (so it appears on top)
+    const walkingWildReelSprite = new Sprite(Assets.get("/walkingwildreel.png"));
+    walkingWildReelSprite.width = cellSize;
+    walkingWildReelSprite.height = cellSize * ROWS;
+    walkingWildReelSprite.x = 0;
+    walkingWildReelSprite.y = 0;
+    console.log("Creating walkingwildreel sprite:", walkingWildReelSprite.texture ? "✓ Texture loaded" : "✗ Texture missing");
+    slotReelContainer.addChild(walkingWildReelSprite);
+
+    // Add slot machine container directly to main stage at the TOP z-index
+    app.stage.addChild(slotReelContainer);
+
+    // Create multiple cat sprites for the slot reel effect (3 complete sets)
+    const reelSprites = [];
+    const catSpriteHeight = cellSize * 0.8;
+    const spacing = catSpriteHeight + 10; // Small gap between sprites
+    const totalReelHeight = 5 * spacing; // 5 cat images
+
+    // Create 3 sets of standalone cat sprites (cat1.png through cat5.png) to ensure smooth infinite scroll
+    for (let set = 0; set < 3; set++) {
+        for (let i = 1; i <= 5; i++) {
+            const categorySprite = new Sprite(Assets.get(`/cat${i}.png`));
+            categorySprite.width = cellSize * 0.72; // 0.8 * 0.9 = 0.72
+            categorySprite.height = catSpriteHeight * 0.9;
+            categorySprite.x = cellSize * 0.14; // Adjust x position to center the smaller sprite
+            categorySprite.y = (set * totalReelHeight) + ((i-1) * spacing) - totalReelHeight; // Start above visible area
+
+            catAnimationContainer.addChild(categorySprite);
+            reelSprites.push(categorySprite);
+        }
+    }
+
+    // Slot machine animation variables
+    let reelSpeed = 15; // Initial fast speed
+    let animationTime = 0;
+    const totalAnimationTime = 3000; // 3 seconds total animation
+    const slowDownStartTime = 2000; // Start slowing down after 2 seconds
+
+    // Final category selection (pre-determined)
+    const finalCategory = hurricaneCategory - 1;
+
+    // Animation loop
+    const slotAnimation = () => {
+        animationTime += app.ticker.deltaMS;
+
+        // Calculate current speed (slow down near the end)
+        if (animationTime > slowDownStartTime) {
+            const slowDownProgress = (animationTime - slowDownStartTime) / (totalAnimationTime - slowDownStartTime);
+            reelSpeed = 15 * (1 - slowDownProgress); // Gradually slow to 0
         }
 
-        // Add current hurricane category sprite with motion blur effect
-        const categorySprite = new Sprite(catSheet.textures[hurricaneSprites[currentSelection]]);
-        categorySprite.width = cellSize * 0.8;
-        categorySprite.height = cellSize * 0.8;
-        categorySprite.x = hurricaneCol * cellSize + cellSize * 0.1 + centerOffsetX;
-        categorySprite.y = cellSize * 2 + cellSize * 0.1 + centerOffsetY;
+        // Move all reel sprites down
+        for (let sprite of reelSprites) {
+            sprite.y += reelSpeed;
 
-        // Add motion blur by making it slightly transparent and offset
-        categorySprite.alpha = 0.8;
-        scatterContainer.addChild(categorySprite);
-
-        currentSelection = (currentSelection + 1) % hurricaneSprites.length;
-        selectionCount++;
-
-        // Slow down the selection as we approach the end
-        if (selectionCount > maxSelections - 10) {
-            selectionSpeed += 20;
+            // Wrap sprites that go below visible area back to top
+            if (sprite.y > cellSize * 5) {
+                sprite.y -= totalReelHeight * 3;
+            }
         }
 
-        if (selectionCount >= maxSelections) {
-            clearInterval(selectionInterval);
-            // Final selection is the hurricane category - 1 (array is 0-indexed)
-            const finalCategory = hurricaneCategory - 1;
+        // Check if animation should end
+        if (animationTime >= totalAnimationTime) {
+            app.ticker.remove(slotAnimation);
 
-            // Show final selected category
-            scatterContainer.removeChildren();
-            const finalSprite = new Sprite(catSheet.textures[hurricaneSprites[finalCategory]]);
+            // Find the sprite closest to the final position and snap to it
+            const targetY = cellSize * 2 + cellSize * 0.1; // Middle position
+            let closestSprite = null;
+            let closestDistance = Infinity;
+
+            for (let sprite of reelSprites) {
+                const distance = Math.abs(sprite.y - targetY);
+                if (distance < closestDistance) {
+                    closestDistance = distance;
+                    closestSprite = sprite;
+                }
+            }
+
+            // Hide all sprites except the final category
+            for (let sprite of reelSprites) {
+                sprite.visible = false;
+            }
+
+            // Create and show final sprite snapping into position
+            const finalSprite = new Sprite(Assets.get(`/cat${finalCategory + 1}.png`));
             finalSprite.width = cellSize;
             finalSprite.height = cellSize;
             finalSprite.x = hurricaneCol * cellSize + centerOffsetX;
             finalSprite.y = cellSize * 2 + centerOffsetY;
             finalSprite.alpha = 1.0;
+
+            // Animate the snap into position
+            finalSprite.y = closestSprite ? closestSprite.y + cellSize * 0.1 : targetY + 20; // Start slightly off
             scatterContainer.addChild(finalSprite);
 
-            setTimeout(() => {
-                // Remove all selection animations
-                app.stage.removeChild(scatterSprite);
-                app.stage.removeChild(scatterContainer);
-                expandReel();
-            }, 1000);
+            // Smooth snap animation
+            const snapAnimation = () => {
+                const targetFinalY = cellSize * 2 + centerOffsetY;
+                const diff = targetFinalY - finalSprite.y;
+                finalSprite.y += diff * 0.3; // Smooth easing
+
+                if (Math.abs(diff) < 1) {
+                    finalSprite.y = targetFinalY;
+                    app.ticker.remove(snapAnimation);
+
+                    setTimeout(() => {
+                        // Remove all selection animations
+                        app.stage.removeChild(scatterSprite);
+                        app.stage.removeChild(scatterContainer);
+                        app.stage.removeChild(slotReelContainer); // Remove slot machine container from main stage
+                        expandReel();
+                    }, 1000);
+                }
+            };
+
+            app.ticker.add(snapAnimation);
         }
-    }, selectionSpeed);
+    };
+
+    app.ticker.add(slotAnimation);
 }
 
 function expandReel() {
@@ -442,14 +559,16 @@ function createSpinningHurricaneVisual() {
 
     hurricane = new Container();
 
-    // Use the full reel sprite as background FIRST
-    const fullReel = new Sprite(catSheet.textures[fullReelSprite]);
+    // Use the standalone walkingwildreel.png as background FIRST
+    const fullReel = new Sprite(Assets.get("/walkingwildreel.png"));
     fullReel.width = cellSize;
     fullReel.height = cellSize * ROWS;
     fullReel.x = 0;
     fullReel.y = 0;
+    console.log("Creating hurricane walkingwildreel sprite:", fullReel.texture ? "✓ Texture loaded" : "✗ Texture missing");
+    console.log("Hurricane fullReel dimensions:", fullReel.width, "x", fullReel.height, "at position", fullReel.x, fullReel.y);
     hurricane.addChild(fullReel);
-    console.log("Added full reel sprite");
+    console.log("Added walkingwildreel.png sprite");
 
     // Add category label at the top INSIDE the full reel (within the 124x620 area)
     const categoryLabelSprite = new Sprite(categoryLabels[hurricaneCategory]);
@@ -900,7 +1019,7 @@ function calculateWins() {
         const payline = paylines[lineIndex];
         let consecutiveCount = 1;
         let currentSymbol = reels[payline[0][0]][payline[0][1]]; // First symbol in payline
-        
+
         // Skip if first symbol is empty or scatter
         if (!currentSymbol || currentSymbol === freeSpinsScatterSprite) {
             continue;
@@ -910,7 +1029,7 @@ function calculateWins() {
         for (let pos = 1; pos < payline.length; pos++) {
             const [col, row] = payline[pos];
             const symbolAtPos = reels[col][row];
-            
+
             if (symbolAtPos === currentSymbol ||
                 symbolAtPos === "acehc.png" || // Ace wild substitute
                 (symbolAtPos && symbolAtPos.startsWith("wild") && symbolAtPos.endsWith(".png")) ||
@@ -944,7 +1063,7 @@ function createWinningPaylineOverlay(lineIndex, consecutiveCount, winAmount) {
 
     // Get the coordinates for the winning symbols
     const winningPositions = payline.slice(0, consecutiveCount);
-    
+
     if (winningPositions.length < 2) return; // Need at least 2 positions to draw a line
 
     // Create a path through all winning positions
@@ -955,9 +1074,9 @@ function createWinningPaylineOverlay(lineIndex, consecutiveCount, winAmount) {
     const firstPos = winningPositions[0];
     const startX = centerOffsetX + (firstPos[0] * cellSize) + (cellSize / 2);
     const startY = centerOffsetY + (firstPos[1] * cellSize) + (cellSize / 2);
-    
+
     pathOverlay.moveTo(startX, startY);
-    
+
     // Draw lines to each subsequent position
     for (let i = 1; i < winningPositions.length; i++) {
         const pos = winningPositions[i];
@@ -969,13 +1088,13 @@ function createWinningPaylineOverlay(lineIndex, consecutiveCount, winAmount) {
     // Add circles at each winning position to highlight them
     pathOverlay.lineStyle(0);
     pathOverlay.beginFill(0xff0000, 0.4);
-    
+
     for (const pos of winningPositions) {
         const x = centerOffsetX + (pos[0] * cellSize) + (cellSize / 2);
         const y = centerOffsetY + (pos[1] * cellSize) + (cellSize / 2);
         pathOverlay.drawCircle(x, y, cellSize * 0.2);
     }
-    
+
     pathOverlay.endFill();
 
     // Add to stage
@@ -992,7 +1111,7 @@ function createWinningPaylineOverlay(lineIndex, consecutiveCount, winAmount) {
         }
     };
     pulseAnimation();
-    
+
     console.log(`🌪️ Created winning payline overlay for line ${lineIndex + 1} with ${consecutiveCount} symbols`);
 }
 
