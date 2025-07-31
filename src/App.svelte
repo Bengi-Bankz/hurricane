@@ -360,6 +360,26 @@
                         <p class="section-text">
                             Win if matching symbols appear in any of the 15 predefined line paths starting from leftmost reel. Multiple wins are added together.
                         </p>
+                        
+                        <div class="paylines-section">
+                            <h3 class="paylines-title">15 PAYLINES</h3>
+                            <div class="paylines-image-container">
+                                <img src="/15paylines.png" alt="15 Paylines" class="paylines-image" />
+                            </div>
+                            <div class="paylines-description">
+                                <p>The game features 15 fixed paylines across the 5×5 grid:</p>
+                                <ul class="paylines-list">
+                                    <li><strong>Lines 1-5:</strong> Horizontal lines (top to bottom rows)</li>
+                                    <li><strong>Lines 6-7:</strong> Diagonal lines (top-left to bottom-right)</li>
+                                    <li><strong>Lines 8-9:</strong> Diagonal lines (bottom-left to top-right)</li>
+                                    <li><strong>Lines 10-15:</strong> Zigzag and special patterns</li>
+                                </ul>
+                                <p class="paylines-note">
+                                    All paylines read from left to right. Minimum 3 consecutive matching symbols required for a win.
+                                    Wild symbols substitute for all regular symbols to help complete winning combinations.
+                                </p>
+                            </div>
+                        </div>
                     </section>
 
                     <section class="info-section">
@@ -1074,6 +1094,72 @@
     .section-title.payouts {
         color: #32cd32;
         text-shadow: 0 0 6px rgba(50, 205, 50, 0.5);
+    }
+
+    /* Paylines Section Styling */
+    .paylines-section {
+        margin-top: 20px;
+        padding: 15px;
+        background: rgba(50, 205, 50, 0.05);
+        border-radius: 8px;
+        border: 1px solid rgba(50, 205, 50, 0.2);
+    }
+
+    .paylines-title {
+        color: #32cd32;
+        font-family: 'Orbitron', monospace;
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 15px;
+        text-align: center;
+        text-shadow: 0 0 4px rgba(50, 205, 50, 0.5);
+        letter-spacing: 1px;
+    }
+
+    .paylines-image-container {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 15px;
+        padding: 10px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 6px;
+    }
+
+    .paylines-image {
+        max-width: 100%;
+        height: auto;
+        border-radius: 4px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    }
+
+    .paylines-description {
+        color: #e0e6ed;
+        font-size: 13px;
+        line-height: 1.5;
+    }
+
+    .paylines-list {
+        margin: 10px 0;
+        padding-left: 20px;
+    }
+
+    .paylines-list li {
+        margin-bottom: 6px;
+    }
+
+    .paylines-list strong {
+        color: #32cd32;
+        text-shadow: 0 0 2px rgba(50, 205, 50, 0.3);
+    }
+
+    .paylines-note {
+        margin-top: 15px;
+        padding: 10px;
+        background: rgba(50, 205, 50, 0.08);
+        border-left: 3px solid #32cd32;
+        border-radius: 4px;
+        font-style: italic;
+        font-size: 12px;
     }
 
     .section-text {

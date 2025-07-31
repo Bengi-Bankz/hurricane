@@ -46,6 +46,31 @@ const symbolNames = [
     "10hc.png"
 ];
 
+// Define all 15 paylines for 5x5 grid
+// Each payline is an array of [col, row] coordinates
+const paylines = [
+    // Horizontal lines (1-5)
+    [[0,0], [1,0], [2,0], [3,0], [4,0]], // Line 1: Top row
+    [[0,1], [1,1], [2,1], [3,1], [4,1]], // Line 2: Second row
+    [[0,2], [1,2], [2,2], [3,2], [4,2]], // Line 3: Middle row
+    [[0,3], [1,3], [2,3], [3,3], [4,3]], // Line 4: Fourth row
+    [[0,4], [1,4], [2,4], [3,4], [4,4]], // Line 5: Bottom row
+    
+    // Diagonal lines (6-9)
+    [[0,0], [1,1], [2,2], [3,3], [4,4]], // Line 6: Top-left to bottom-right diagonal
+    [[0,1], [1,2], [2,3], [3,4], [4,4]], // Line 7: Second diagonal down-right
+    [[0,4], [1,3], [2,2], [3,1], [4,0]], // Line 8: Bottom-left to top-right diagonal
+    [[0,3], [1,2], [2,1], [3,0], [4,0]], // Line 9: Second diagonal up-right
+    
+    // Zigzag and special patterns (10-15)
+    [[0,1], [1,0], [2,1], [3,2], [4,1]], // Line 10: V-shape up
+    [[0,3], [1,4], [2,3], [3,2], [4,3]], // Line 11: V-shape down
+    [[0,2], [1,1], [2,0], [3,1], [4,2]], // Line 12: Mountain pattern
+    [[0,2], [1,3], [2,4], [3,3], [4,2]], // Line 13: Valley pattern
+    [[0,0], [1,2], [2,1], [3,3], [4,2]], // Line 14: Zigzag pattern 1
+    [[0,4], [1,2], [2,3], [3,1], [4,2]]  // Line 15: Zigzag pattern 2
+];
+
 // Hurricane category sprites
 const hurricaneSprites = [
     "cat1.png",
@@ -855,31 +880,41 @@ function calculateWins() {
         // Trigger free spins (you can implement this logic later)
     }
 
-    // Check for winning combinations (simplified example)
-    // Check horizontal lines
-    for (let row = 0; row < ROWS; row++) {
+    // Check for winning combinations using all 15 paylines
+    for (let lineIndex = 0; lineIndex < paylines.length; lineIndex++) {
+        const payline = paylines[lineIndex];
         let consecutiveCount = 1;
-        let currentSymbol = reels[0][row];
+        let currentSymbol = reels[payline[0][0]][payline[0][1]]; // First symbol in payline
+        
+        // Skip if first symbol is empty or scatter
+        if (!currentSymbol || currentSymbol === freeSpinsScatterSprite) {
+            continue;
+        }
 
-        for (let col = 1; col < COLS; col++) {
-            if (reels[col][row] === currentSymbol ||
-                reels[col][row] === "acehc.png" ||
-                (reels[col][row].startsWith("wild") && reels[col][row].endsWith(".png")) ||
+        // Check consecutive symbols along this payline
+        for (let pos = 1; pos < payline.length; pos++) {
+            const [col, row] = payline[pos];
+            const symbolAtPos = reels[col][row];
+            
+            if (symbolAtPos === currentSymbol ||
+                symbolAtPos === "acehc.png" || // Ace wild substitute
+                (symbolAtPos && symbolAtPos.startsWith("wild") && symbolAtPos.endsWith(".png")) ||
                 currentSymbol === "acehc.png" ||
-                (currentSymbol.startsWith("wild") && currentSymbol.endsWith(".png"))) {
+                (currentSymbol && currentSymbol.startsWith("wild") && currentSymbol.endsWith(".png"))) {
                 consecutiveCount++;
             } else {
-                break;
+                break; // Stop checking this payline if symbols don't match
             }
         }
 
+        // Award win if 3 or more consecutive symbols
         if (consecutiveCount >= 3) {
             const winAmount = getSymbolPayout(currentSymbol) * consecutiveCount;
             roundWinnings += winAmount;
-            console.log(`🎯 Win on row ${row}: ${consecutiveCount}x ${currentSymbol} = ${winAmount}`);
+            console.log(`🎯 Win on payline ${lineIndex + 1}: ${consecutiveCount}x ${currentSymbol} = ${winAmount}`);
 
-            // Create hurricane-style path overlay for this winning line
-            createWinningLineOverlay(row, consecutiveCount, winAmount);
+            // Create hurricane-style path overlay for this winning payline
+            createWinningPaylineOverlay(lineIndex, consecutiveCount, winAmount);
         }
     }
 
@@ -887,63 +922,48 @@ function calculateWins() {
     console.log(`💵 Round winnings: ${roundWinnings}, Total: ${totalWinnings}`);
 }
 
-function createWinningLineOverlay(row, consecutiveCount, winAmount) {
-    // Create the hurricane path cone effect for winning lines
+function createWinningPaylineOverlay(lineIndex, consecutiveCount, winAmount) {
+    // Create the hurricane path cone effect for winning paylines
     const pathOverlay = new Graphics();
+    const payline = paylines[lineIndex];
 
-    // Calculate the path from left to right across the winning symbols
-    const startX = centerOffsetX;
-    const startY = centerOffsetY + (row * cellSize) + (cellSize / 2); // Center of the row
-    const endX = centerOffsetX + (consecutiveCount * cellSize);
-    const endY = startY;
+    // Get the coordinates for the winning symbols
+    const winningPositions = payline.slice(0, consecutiveCount);
+    
+    if (winningPositions.length < 2) return; // Need at least 2 positions to draw a line
 
-    // Create the cone path - starts narrow and widens
-    const coneWidth = cellSize * 0.3; // How wide the cone gets
-    const coneStartWidth = cellSize * 0.1; // Starting width
+    // Create a path through all winning positions
+    pathOverlay.lineStyle(4, 0xff0000, 0.8); // Red line
+    pathOverlay.beginFill(0xff0000, 0.2); // Semi-transparent red fill
 
-    // Draw the transparent red fill first
-    pathOverlay.beginFill(0xff0000, 0.3); // Red with 30% transparency
-    pathOverlay.moveTo(startX, startY - coneStartWidth);
-    pathOverlay.lineTo(endX, endY - coneWidth);
-    pathOverlay.lineTo(endX, endY + coneWidth);
-    pathOverlay.lineTo(startX, startY + coneStartWidth);
-    pathOverlay.closePath();
+    // Start at first position
+    const firstPos = winningPositions[0];
+    const startX = centerOffsetX + (firstPos[0] * cellSize) + (cellSize / 2);
+    const startY = centerOffsetY + (firstPos[1] * cellSize) + (cellSize / 2);
+    
+    pathOverlay.moveTo(startX, startY);
+    
+    // Draw lines to each subsequent position
+    for (let i = 1; i < winningPositions.length; i++) {
+        const pos = winningPositions[i];
+        const x = centerOffsetX + (pos[0] * cellSize) + (cellSize / 2);
+        const y = centerOffsetY + (pos[1] * cellSize) + (cellSize / 2);
+        pathOverlay.lineTo(x, y);
+    }
+
+    // Add circles at each winning position to highlight them
+    pathOverlay.lineStyle(0);
+    pathOverlay.beginFill(0xff0000, 0.4);
+    
+    for (const pos of winningPositions) {
+        const x = centerOffsetX + (pos[0] * cellSize) + (cellSize / 2);
+        const y = centerOffsetY + (pos[1] * cellSize) + (cellSize / 2);
+        pathOverlay.drawCircle(x, y, cellSize * 0.2);
+    }
+    
     pathOverlay.endFill();
 
-    // Draw the top boundary line
-    pathOverlay.lineStyle(3, 0xff0000, 0.8); // Red border
-    pathOverlay.moveTo(startX, startY - coneStartWidth);
-    pathOverlay.lineTo(endX, endY - coneWidth);
-
-    // Draw the bottom boundary line
-    pathOverlay.moveTo(startX, startY + coneStartWidth);
-    pathOverlay.lineTo(endX, endY + coneWidth);
-
-    // Draw dotted white center line for better visibility
-    pathOverlay.lineStyle(4, 0xffffff, 1); // Thicker white dotted line
-    const centerY = startY;
-    const dashLength = 15;
-    const gapLength = 8;
-    
-    // Draw dashes across the entire winning line
-    for (let x = startX; x < endX; x += dashLength + gapLength) {
-        const dashEnd = Math.min(x + dashLength, endX);
-        pathOverlay.moveTo(x, centerY);
-        pathOverlay.lineTo(dashEnd, centerY);
-    }
-
-    // Add a second thinner yellow line for extra visibility
-    pathOverlay.lineStyle(2, 0xffff00, 0.8); // Yellow line
-    for (let x = startX + 2; x < endX; x += dashLength + gapLength) {
-        const dashEnd = Math.min(x + dashLength - 4, endX);
-        pathOverlay.moveTo(x, centerY);
-        pathOverlay.lineTo(dashEnd, centerY);
-    }
-
-    // Add some pulsing animation
-    pathOverlay.alpha = 0.8;
-
-    // Position the overlay
+    // Add to stage
     app.stage.addChild(pathOverlay);
     winningLineOverlays.push(pathOverlay);
 
@@ -957,8 +977,8 @@ function createWinningLineOverlay(row, consecutiveCount, winAmount) {
         }
     };
     pulseAnimation();
-
-    console.log(`🌪️ Created winning line overlay for row ${row} with ${consecutiveCount} symbols`);
+    
+    console.log(`🌪️ Created winning payline overlay for line ${lineIndex + 1} with ${consecutiveCount} symbols`);
 }
 
 function clearWinningLineOverlays() {
