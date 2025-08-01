@@ -46,25 +46,7 @@ const symbolNames = [
     "10hc.png"
 ];
 
-// Define all 15 paylines for 5x5 grid
-// Each payline is an array of [col, row] coordinates
-const paylines = [
-    [[0, 0], [1, 0], [2, 0], [3, 0], [4, 0]], // Top row
-    [[0, 1], [1, 1], [2, 1], [3, 1], [4, 1]],
-    [[0, 2], [1, 2], [2, 2], [3, 2], [4, 2]],
-    [[0, 3], [1, 3], [2, 3], [3, 3], [4, 3]],
-    [[0, 4], [1, 4], [2, 4], [3, 4], [4, 4]], // Bottom row
-    [[0, 0], [1, 1], [2, 0], [3, 1], [4, 0]], // V down
-    [[0, 1], [1, 0], [2, 1], [3, 0], [4, 1]], // V up
-    [[0, 1], [1, 2], [2, 1], [3, 2], [4, 1]], // V down middle
-    [[0, 2], [1, 1], [2, 2], [3, 1], [4, 2]], // V up middle
-    [[0, 4], [1, 3], [2, 4], [3, 3], [4, 4]], // W bottom
-    [[0, 3], [1, 4], [2, 3], [3, 4], [4, 3]], // W flipped
-    [[0, 3], [1, 2], [2, 3], [3, 2], [4, 3]], // Middle bounce
-    [[0, 2], [1, 3], [2, 2], [3, 3], [4, 2]], // Diagonal bounce
-    [[0, 0], [1, 1], [2, 2], [3, 3], [4, 4]], // TL to BR diagonal
-    [[0, 4], [1, 3], [2, 2], [3, 1], [4, 0]]  // BL to TR diagonal
-];
+// Payline definitions removed - starting fresh
 
 
 // Hurricane category sprites
@@ -91,13 +73,23 @@ const wildPlaceholderSprites = [
 ];
 
 let catSheet; // For the new cat sprites
-let backgroundSprite; // Game background
+let backgroundSprite; // Game background (will be animated)
 let gameTitleSprite; // Game title at top left
 let reelFrameSprite; // Reel outline
 let walkingWildTint = null; // For red flash effect
 let categoryLabels = {}; // For category1.png through category5.png
 let wildPlaceholderTextures = {}; // For wild placeholder textures
-let winningLineOverlays = []; // Track winning line overlay graphics
+
+// Animated background system
+let backgroundFrames = {
+    intro: [], // intro_002 through intro_012 (bright lightning flash starts at intro_002)
+    loop: []   // bg_001 through bg_026 (background loop frames)
+};
+let backgroundSheets = []; // Store the loaded spritesheets
+let currentBackgroundFrame = 0;
+let backgroundAnimationState = 'intro'; // 'intro' or 'loop'
+let backgroundAnimationSpeed = 100; // milliseconds between frames
+let lastBackgroundFrameTime = 0;
 
 // Center offset calculations
 let centerOffsetX = 0;
@@ -184,11 +176,67 @@ async function init(canvasContainer) {
         await Assets.load("/gametitle.png");
         console.log("Game title loaded successfully");
 
+        // Load animated background frames from spritesheets
+        console.log("Loading animated background spritesheets...");
+        try {
+            // Load all 6 spritesheets (bg-0 through bg-5)
+            for (let i = 0; i <= 5; i++) {
+                console.log(`Loading bg-${i} spritesheet...`);
+                const bgTexture = await Assets.load(`/bg/bg-${i}.png`);
+                const bgJson = await fetch(`/bg/bg-${i}.png.json`).then((res) => res.json());
+                const bgSheet = new Spritesheet(bgTexture, bgJson);
+                await bgSheet.parse();
+                backgroundSheets.push(bgSheet);
+                console.log(`✓ Loaded bg-${i} spritesheet with ${Object.keys(bgSheet.textures).length} frames`);
+            }
+            
+            // Extract intro frames (intro_002 through intro_012) - starting from intro_002 for lightning flash
+            for (let i = 2; i <= 12; i++) {
+                const frameKey = `intro_${i.toString().padStart(3, '0')}.png`;
+                for (const sheet of backgroundSheets) {
+                    if (sheet.textures[frameKey]) {
+                        backgroundFrames.intro.push(sheet.textures[frameKey]);
+                        console.log(`✓ Found intro frame: ${frameKey}`);
+                        break;
+                    }
+                }
+            }
+            
+            // Extract background loop frames (bg_001 through bg_026)
+            for (let i = 1; i <= 26; i++) {
+                const frameKey = `bg_${i.toString().padStart(3, '0')}.png`;
+                for (const sheet of backgroundSheets) {
+                    if (sheet.textures[frameKey]) {
+                        backgroundFrames.loop.push(sheet.textures[frameKey]);
+                        console.log(`✓ Found bg frame: ${frameKey}`);
+                        break;
+                    }
+                }
+            }
+            
+            console.log(`Animated background loaded: ${backgroundFrames.intro.length} intro frames, ${backgroundFrames.loop.length} loop frames`);
+        } catch (error) {
+            console.warn("Some background frames not found:", error.message);
+            console.error("Detailed error:", error);
+            // Fallback to static background if frames fail to load
+            backgroundFrames.intro = [];
+            backgroundFrames.loop = [];
+        }
+
         // For backwards compatibility, set sheet to catSheet since all symbols are now there
         sheet = catSheet;
 
-        // Add background that fills the entire viewport
-        backgroundSprite = new Sprite(catSheet.textures["backgroundhc.png"]);
+        // Add animated background that fills the entire viewport
+        if (backgroundFrames.intro.length > 0) {
+            // Use animated background system
+            backgroundSprite = new Sprite(backgroundFrames.intro[0]); // Start with first intro frame
+            console.log("Using animated background system");
+        } else {
+            // Fallback to static background
+            backgroundSprite = new Sprite(catSheet.textures["backgroundhc.png"]);
+            console.log("Using static background fallback");
+        }
+        
         backgroundSprite.width = app.screen.width;
         backgroundSprite.height = app.screen.height;
         backgroundSprite.x = 0;
@@ -227,6 +275,11 @@ async function init(canvasContainer) {
         // Draw reels AFTER frame so they appear on top
         drawReels();
 
+        // Start background animation if frames are loaded
+        if (backgroundFrames.intro.length > 0 || backgroundFrames.loop.length > 0) {
+            startBackgroundAnimation();
+        }
+
         startHurricaneSpinAnimation();
         console.log("Game initialization complete!");
     } catch (error) {
@@ -240,9 +293,6 @@ function drawReels() {
     const childrenToKeep = [backgroundSprite, gameTitleSprite, reelFrameSprite].filter(Boolean);
     const childrenToRemove = app.stage.children.filter(child => !childrenToKeep.includes(child));
     childrenToRemove.forEach(child => app.stage.removeChild(child));
-
-    // Clear winning line overlays
-    clearWinningLineOverlays();
 
     reels = [];
     reelContainers = [];
@@ -289,7 +339,7 @@ function drawReels() {
                 if (wildPlaceholderTextures[category]) {
                     sprite = new Sprite(wildPlaceholderTextures[category]);
                 } else {
-                    sprite = new Sprite(catSheet.textures["acehc.png"]);
+                    sprite = new Sprite(wildPlaceholderTextures[1] || catSheet.textures["wild.png"]);
                 }
             } else {
                 // Use regular cat sheet textures
@@ -324,20 +374,18 @@ function triggerHurricane() {
     console.log("Cat sheet loaded:", !!catSheet);
 
     if (walking || !catSheet) {
-        console.log("Cannot start hurricane - conditions not met");
+        console.log("Cannot start spin - conditions not met");
         return;
     }
 
-    // Reset for new hurricane
+    // Walking wild disabled - just do regular reel spin
+    console.log("🎰 Regular reel spin - walking wild disabled");
+    
+    // Reset for new spin
     totalWinnings = 0;
-    hurricaneCol = COLS - 1;
-    hurricaneCategory = Math.floor(Math.random() * 5) + 1;
+    walking = true; // Prevent multiple spins
 
-    console.log(`🌪️ Hurricane Category ${hurricaneCategory} approaching!`);
-
-    walking = true;
-
-    // Clear the board for fresh hurricane by redrawing reels (this removes wild placeholders)
+    // Clear the board for fresh spin by redrawing reels
     drawReels();
 
     // Ensure frame stays behind reels after redraw
@@ -346,8 +394,65 @@ function triggerHurricane() {
         app.stage.addChildAt(reelFrameSprite, 1); // Add after background but before reels
     }
 
-    updateReelSpeeds(); // Update reel speeds based on storm position
-    hurricaneHitsReel();
+    // Start regular reel spinning without hurricane mechanics
+    regularReelSpin();
+}
+
+function regularReelSpin() {
+    console.log("🎰 Starting regular reel spin...");
+
+    // Start spinning all reels at normal speed
+    startReelSpin();
+
+    // Wait for reels to spin through at least 20 symbols each
+    const checkSpinProgress = setInterval(() => {
+        let allReelsSpunEnough = true;
+        for (let col = 0; col < COLS; col++) {
+            if (symbolsSpun[col] < 20) {
+                allReelsSpunEnough = false;
+                break;
+            }
+        }
+
+        if (allReelsSpunEnough) {
+            clearInterval(checkSpinProgress);
+            console.log("🎰 All reels have spun enough symbols");
+
+            // Stop spinning with staggered timing
+            stopReelSpin();
+
+            // Wait for all reels to finish stopping before revealing results
+            setTimeout(() => {
+                console.log("🎰 All reels stopped, using symbols that are already in position");
+
+                // DON'T generate new symbols - just capture what's already there
+                // Update the reels array to match what's visually displayed
+                for (let col = 0; col < COLS; col++) {
+                    for (let row = 0; row < ROWS; row++) {
+                        // Find the symbol that's currently at this visible position
+                        const visibleSymbolIndex = row + 1; // Offset by 1 because we have extra symbols
+                        if (reelSymbols[col] && reelSymbols[col][visibleSymbolIndex]) {
+                            const sprite = reelSymbols[col][visibleSymbolIndex];
+                            // Determine which symbol this texture represents
+                            const symbolKey = getSymbolKeyFromTexture(sprite.texture);
+                            reels[col][row] = symbolKey;
+                        }
+                    }
+                }
+                
+                // TODO: Calculate wins here - pay logic removed for fresh start
+                console.log("🎰 Regular spin complete - ready for new pay logic");
+                console.log("Final reel state (captured from visible symbols):");
+                for (let col = 0; col < COLS; col++) {
+                    console.log(`Column ${col}:`, reels[col]);
+                }
+                
+                // Re-enable spinning
+                walking = false;
+
+            }, 3000); // Wait longer for staggered stopping to complete (5 reels * 500ms + buffer)
+        }
+    }, 100); // Check every 100ms
 }
 
 function hurricaneHitsReel() {
@@ -630,26 +735,28 @@ function startReelSpinAnimation() {
                     const symbol = reelSymbols[col][i];
                     symbol.y += speed * direction;
 
-                    // Handle symbol wrapping based on direction
-                    if (direction > 0) {
-                        // Spinning down - if symbol goes below visible area, move to top
-                        if (symbol.y > cellSize * (ROWS + 1)) {
-                            symbol.y = -cellSize;
-                            symbolsSpun[col]++;
+                    // Handle symbol wrapping based on direction - but only if still spinning
+                    if (reelSpinning) {
+                        if (direction > 0) {
+                            // Spinning down - if symbol goes below visible area, move to top
+                            if (symbol.y > cellSize * (ROWS + 1)) {
+                                symbol.y = -cellSize;
+                                symbolsSpun[col]++;
 
-                            // Change to new random symbol
-                            const newKey = symbolNames[Math.floor(Math.random() * symbolNames.length)];
-                            symbol.texture = getSymbolTexture(newKey);
-                        }
-                    } else {
-                        // Spinning up - if symbol goes above visible area, move to bottom
-                        if (symbol.y < -cellSize * 2) {
-                            symbol.y = cellSize * (ROWS + 1);
-                            symbolsSpun[col]++;
+                                // Change to new random symbol only while actively spinning
+                                const newKey = symbolNames[Math.floor(Math.random() * symbolNames.length)];
+                                symbol.texture = getSymbolTexture(newKey);
+                            }
+                        } else {
+                            // Spinning up - if symbol goes above visible area, move to bottom
+                            if (symbol.y < -cellSize * 2) {
+                                symbol.y = cellSize * (ROWS + 1);
+                                symbolsSpun[col]++;
 
-                            // Change to new random symbol
-                            const newKey = symbolNames[Math.floor(Math.random() * symbolNames.length)];
-                            symbol.texture = getSymbolTexture(newKey);
+                                // Change to new random symbol only while actively spinning
+                                const newKey = symbolNames[Math.floor(Math.random() * symbolNames.length)];
+                                symbol.texture = getSymbolTexture(newKey);
+                            }
                         }
                     }
                 }
@@ -661,10 +768,30 @@ function startReelSpinAnimation() {
 function getSymbolTexture(key) {
     if (key.startsWith("wild") && key.endsWith(".png")) {
         const category = key === "wild.png" ? 1 : parseInt(key.match(/wild(\d+)x\.png/)?.[1] || "1");
-        return wildPlaceholderTextures[category] ? wildPlaceholderTextures[category] : catSheet.textures["acehc.png"];
+        return wildPlaceholderTextures[category] ? wildPlaceholderTextures[category] : wildPlaceholderTextures[1];
     } else {
         return catSheet.textures[key];
     }
+}
+
+function getSymbolKeyFromTexture(texture) {
+    // Find which symbol key matches this texture
+    for (const symbolKey of symbolNames) {
+        if (catSheet.textures[symbolKey] === texture) {
+            return symbolKey;
+        }
+    }
+    
+    // Check wild placeholders
+    for (let i = 1; i <= 5; i++) {
+        if (wildPlaceholderTextures[i] === texture) {
+            return wildPlaceholderSprites[i - 1];
+        }
+    }
+    
+    // Fallback to a default symbol if texture not found
+    console.warn("Could not identify texture, defaulting to first symbol");
+    return symbolNames[0];
 }
 
 function snapSymbolsToGrid(col) {
@@ -743,21 +870,78 @@ function startReelSpin() {
 
 function stopReelSpin(delay = 0) {
     setTimeout(() => {
-        reelSpinning = false;
         console.log("🎰 Starting staggered reel stop sequence");
 
-        // Stop reels with staggered timing from left to right (only non-hurricane columns)
+        // Stop reels with staggered timing from left to right
         for (let col = 0; col < COLS; col++) {
-            if (col !== hurricaneCol) { // Only stop non-hurricane columns
-                setTimeout(() => {
-                    // Snap symbols to grid before stopping
-                    snapSymbolsToGrid(col);
-                    spinSpeeds[col] = 0;
-                    console.log(`🎰 Reel ${col} stopped and snapped to grid`);
-                }, col * 500); // 500ms delay between each reel stopping
-            }
+            setTimeout(() => {
+                // Snap symbols to grid before stopping
+                snapSymbolsToGrid(col);
+                spinSpeeds[col] = 0;
+                console.log(`🎰 Reel ${col} stopped and snapped to grid`);
+                
+                // Check if this is the last reel to stop
+                if (col === COLS - 1) {
+                    // All reels have stopped, now set reelSpinning to false
+                    reelSpinning = false;
+                    console.log("🎰 All reels completely stopped - reelSpinning set to false");
+                }
+            }, col * 500); // 500ms delay between each reel stopping
         }
     }, delay);
+}
+
+function startBackgroundAnimation() {
+    console.log("🎬 Starting animated background system");
+    
+    // Reset animation state
+    currentBackgroundFrame = 0;
+    backgroundAnimationState = 'intro';
+    lastBackgroundFrameTime = performance.now();
+    
+    // Background animation loop
+    app.ticker.add(() => {
+        const currentTime = performance.now();
+        
+        // Check if it's time for the next frame
+        if (currentTime - lastBackgroundFrameTime >= backgroundAnimationSpeed) {
+            updateBackgroundFrame();
+            lastBackgroundFrameTime = currentTime;
+        }
+    });
+    
+    console.log("🎬 Background animation started");
+}
+
+function updateBackgroundFrame() {
+    if (backgroundAnimationState === 'intro' && backgroundFrames.intro.length > 0) {
+        // Play intro animation once
+        backgroundSprite.texture = backgroundFrames.intro[currentBackgroundFrame];
+        currentBackgroundFrame++;
+        
+        if (currentBackgroundFrame >= backgroundFrames.intro.length) {
+            // Intro finished, switch to loop
+            console.log("🎬 Intro animation complete, switching to loop");
+            backgroundAnimationState = 'loop';
+            currentBackgroundFrame = 0;
+        }
+    } else if (backgroundAnimationState === 'loop' && backgroundFrames.loop.length > 0) {
+        // Play loop animation continuously
+        backgroundSprite.texture = backgroundFrames.loop[currentBackgroundFrame];
+        currentBackgroundFrame++;
+        
+        if (currentBackgroundFrame >= backgroundFrames.loop.length) {
+            // Loop back to beginning
+            currentBackgroundFrame = 0;
+        }
+    }
+}
+
+function playIntroAnimation() {
+    // Function to restart intro animation (for bonus rounds)
+    console.log("🎬 Playing intro animation for bonus round");
+    currentBackgroundFrame = 0;
+    backgroundAnimationState = 'intro';
 }
 
 function startHurricaneSpinAnimation() {
@@ -814,7 +998,7 @@ function startHurricaneSpinAnimation() {
 function transformColumnToFullReel(col) {
     // Transform the hit column to wild symbols (full reel)
     for (let row = 0; row < ROWS; row++) {
-        reels[col][row] = "acehc.png"; // Use ace as wild symbol
+        reels[col][row] = wildPlaceholderSprites[hurricaneCategory - 1]; // Use category-specific wild placeholder
     }
 }
 
@@ -876,7 +1060,9 @@ function spinReels() {
 
                 // Update the visible symbols to match the final reel state
                 updateVisibleSymbols();
-                calculateWins();
+                
+                // TODO: Calculate wins here - pay logic removed for fresh start
+                console.log("🎰 Reel spin complete - ready for new pay logic");
 
                 // Move hurricane left after calculating wins
                 setTimeout(() => {
@@ -900,9 +1086,9 @@ function spinReels() {
                                 // Use category-specific wild placeholder
                                 wildPlaceholder = new Sprite(wildTexture);
                             } else {
-                                // Fallback to ace wild if wild placeholder not available
-                                wildPlaceholder = new Sprite(catSheet.textures["acehc.png"]);
-                                console.log("Using ace wild as placeholder fallback");
+                                // Fallback to generic wild if wild placeholder not available
+                                wildPlaceholder = new Sprite(wildPlaceholderTextures[1] || catSheet.textures["wild.png"]);
+                                console.log("Using generic wild as placeholder fallback");
                             }
 
                             // Position each wild placeholder in its individual cell (centered)
@@ -919,7 +1105,7 @@ function spinReels() {
                             if (wildTexture) {
                                 reels[hurricaneCol][row] = wildSpriteName;
                             } else {
-                                reels[hurricaneCol][row] = "acehc.png"; // Fallback to ace
+                                reels[hurricaneCol][row] = "wild.png"; // Fallback to generic wild
                             }
                         }
                     }
@@ -953,15 +1139,19 @@ function spinReels() {
 
 function updateVisibleSymbols() {
     // Update the visible symbols in each reel to match the final reel data
+    console.log("🔄 Updating visible symbols to match final reel state...");
+    
     for (let col = 0; col < COLS; col++) {
-        if (col !== hurricaneCol && reelSymbols[col]) { // Don't update hurricane column
+        if (reelSymbols[col]) {
             for (let row = 0; row < ROWS; row++) {
                 const key = reels[col][row];
+                console.log(`Setting visible symbol at [${col}, ${row}] to: ${key}`);
+                
                 let newTexture;
 
                 if (key.startsWith("wild") && key.endsWith(".png")) {
                     const category = key === "wild.png" ? 1 : parseInt(key.match(/wild(\d+)x\.png/)?.[1] || "1");
-                    newTexture = wildPlaceholderTextures[category] ? wildPlaceholderTextures[category] : catSheet.textures["acehc.png"];
+                    newTexture = wildPlaceholderTextures[category] ? wildPlaceholderTextures[category] : wildPlaceholderTextures[1];
                 } else {
                     newTexture = catSheet.textures[key];
                 }
@@ -970,10 +1160,12 @@ function updateVisibleSymbols() {
                 const visibleSymbolIndex = row + 1; // Offset by 1 because we have extra symbols
                 if (reelSymbols[col][visibleSymbolIndex]) {
                     reelSymbols[col][visibleSymbolIndex].texture = newTexture;
+                    console.log(`✓ Updated texture for visible symbol at index ${visibleSymbolIndex}`);
                 }
             }
         }
     }
+    console.log("🔄 Visible symbol update complete");
 }
 
 function redrawReels() {
@@ -994,156 +1186,20 @@ function redrawReels() {
 }
 
 function calculateWins() {
-    let roundWinnings = 0;
-
-    // Clear any existing winning line overlays
-    clearWinningLineOverlays();
-
-    // Check for free spins scatter symbols first
-    let scatterCount = 0;
+    // Pay logic removed - starting fresh
+    console.log("🎯 calculateWins() called - implement new pay logic here");
+    console.log("Current reel state:");
     for (let col = 0; col < COLS; col++) {
-        for (let row = 0; row < ROWS; row++) {
-            if (reels[col][row] === freeSpinsScatterSprite) {
-                scatterCount++;
-            }
-        }
+        console.log(`Column ${col}:`, reels[col]);
     }
-
-    if (scatterCount >= 3) {
-        console.log(`🎰 FREE SPINS! Found ${scatterCount} scatter symbols`);
-        // Trigger free spins (you can implement this logic later)
-    }
-
-    // Check for winning combinations using all 15 paylines
-    for (let lineIndex = 0; lineIndex < paylines.length; lineIndex++) {
-        const payline = paylines[lineIndex];
-        let consecutiveCount = 1;
-        let currentSymbol = reels[payline[0][0]][payline[0][1]]; // First symbol in payline
-
-        // Skip if first symbol is empty or scatter
-        if (!currentSymbol || currentSymbol === freeSpinsScatterSprite) {
-            continue;
-        }
-
-        // Check consecutive symbols along this payline
-        for (let pos = 1; pos < payline.length; pos++) {
-            const [col, row] = payline[pos];
-            const symbolAtPos = reels[col][row];
-
-            if (symbolAtPos === currentSymbol ||
-                symbolAtPos === "acehc.png" || // Ace wild substitute
-                (symbolAtPos && symbolAtPos.startsWith("wild") && symbolAtPos.endsWith(".png")) ||
-                currentSymbol === "acehc.png" ||
-                (currentSymbol && currentSymbol.startsWith("wild") && currentSymbol.endsWith(".png"))) {
-                consecutiveCount++;
-            } else {
-                break; // Stop checking this payline if symbols don't match
-            }
-        }
-
-        // Award win if 3 or more consecutive symbols
-        if (consecutiveCount >= 3) {
-            const winAmount = getSymbolPayout(currentSymbol) * consecutiveCount;
-            roundWinnings += winAmount;
-            console.log(`🎯 Win on payline ${lineIndex + 1}: ${consecutiveCount}x ${currentSymbol} = ${winAmount}`);
-
-            // Create hurricane-style path overlay for this winning payline
-            createWinningPaylineOverlay(lineIndex, consecutiveCount, winAmount);
-        }
-    }
-
-    totalWinnings += roundWinnings;
-    console.log(`💵 Round winnings: ${roundWinnings}, Total: ${totalWinnings}`);
 }
 
-function createWinningPaylineOverlay(lineIndex, consecutiveCount, winAmount) {
-    // Create the hurricane path cone effect for winning paylines
-    const pathOverlay = new Graphics();
-    const payline = paylines[lineIndex];
 
-    // Get the coordinates for the winning symbols
-    const winningPositions = payline.slice(0, consecutiveCount);
-
-    if (winningPositions.length < 2) return; // Need at least 2 positions to draw a line
-
-    // Create a path through all winning positions
-    pathOverlay.lineStyle(4, 0xff0000, 0.8); // Red line
-    pathOverlay.beginFill(0xff0000, 0.2); // Semi-transparent red fill
-
-    // Start at first position
-    const firstPos = winningPositions[0];
-    const startX = centerOffsetX + (firstPos[0] * cellSize) + (cellSize / 2);
-    const startY = centerOffsetY + (firstPos[1] * cellSize) + (cellSize / 2);
-
-    pathOverlay.moveTo(startX, startY);
-
-    // Draw lines to each subsequent position
-    for (let i = 1; i < winningPositions.length; i++) {
-        const pos = winningPositions[i];
-        const x = centerOffsetX + (pos[0] * cellSize) + (cellSize / 2);
-        const y = centerOffsetY + (pos[1] * cellSize) + (cellSize / 2);
-        pathOverlay.lineTo(x, y);
-    }
-
-    // Add circles at each winning position to highlight them
-    pathOverlay.lineStyle(0);
-    pathOverlay.beginFill(0xff0000, 0.4);
-
-    for (const pos of winningPositions) {
-        const x = centerOffsetX + (pos[0] * cellSize) + (cellSize / 2);
-        const y = centerOffsetY + (pos[1] * cellSize) + (cellSize / 2);
-        pathOverlay.drawCircle(x, y, cellSize * 0.2);
-    }
-
-    pathOverlay.endFill();
-
-    // Add to stage
-    app.stage.addChild(pathOverlay);
-    winningLineOverlays.push(pathOverlay);
-
-    // Add pulsing animation to the winning line
-    let pulseTime = 0;
-    const pulseAnimation = () => {
-        if (pathOverlay.parent) {
-            pulseTime += 0.1;
-            pathOverlay.alpha = 0.6 + (Math.sin(pulseTime) * 0.3); // Pulse between 0.3 and 0.9
-            setTimeout(pulseAnimation, 50);
-        }
-    };
-    pulseAnimation();
-
-    console.log(`🌪️ Created winning payline overlay for line ${lineIndex + 1} with ${consecutiveCount} symbols`);
-}
-
-function clearWinningLineOverlays() {
-    // Remove all existing winning line overlays
-    winningLineOverlays.forEach(overlay => {
-        if (overlay.parent) {
-            app.stage.removeChild(overlay);
-        }
-    });
-    winningLineOverlays = [];
-}
 
 function getSymbolPayout(symbol) {
-    const payouts = {
-        "acehc.png": 50,          // Wild
-        "wild.png": 50,           // Wild placeholder Category 1
-        "wild2x.png": 100,        // Wild placeholder Category 2 (2x multiplier)
-        "wild3x.png": 150,        // Wild placeholder Category 3 (3x multiplier)
-        "wild4x.png": 200,        // Wild placeholder Category 4 (4x multiplier)
-        "wild5x.png": 250,        // Wild placeholder Category 5 (5x multiplier)
-        "kinghc.png": 25,
-        "queenhc.png": 20,
-        "jackhc.png": 15,
-        "10hc.png": 10,
-        "evacsignhc.png": 8,
-        "flashlighthc.png": 6,
-        "radiohc.png": 5,
-        "waterhc.png": 4,
-        "windsockhc.png": 3
-    };
-    return payouts[symbol] || 1;
+    // Symbol payouts removed - starting fresh with pay logic
+    console.log(`💰 getSymbolPayout called for: ${symbol}`);
+    return 0; // Placeholder until new pay logic is implemented
 }
 
 function getReelSpinningState() {
