@@ -9,12 +9,19 @@ import {
 
 let app;
 let gridContainer;
+let backgroundContainer;
+let backgroundSprite;
 let gridCells = [];
 let symbolSprites = [];
 let spritesheet;
+let backgroundSpritesheets = [];
 let reelContainers = []; // Container for each reel column
 let reelSymbols = []; // Symbols in each reel (more than visible)
 let isSpinning = false;
+let backgroundAnimationState = 'intro'; // 'intro', 'looping'
+let introFrameIndex = 0;
+let bgFrameIndex = 0;
+let lastFrameTime = 0;
 const COLS = 5;
 const ROWS = 5;
 const cellSize = 124; // Match the symbol size from JSON
@@ -74,26 +81,47 @@ const paylines = [
 ];
 
 async function init(canvasContainer) {
-    // Create PIXI application
+    // Create PIXI application with fullscreen dimensions
     app = new Application();
 
+    // Wait a frame to ensure container is fully rendered
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    
+    // Get the actual container dimensions
+    const containerRect = canvasContainer.getBoundingClientRect();
+    console.log('Container dimensions:', containerRect);
+    console.log('Window dimensions:', window.innerWidth, 'x', window.innerHeight);
+    
+    // Use window dimensions to ensure fullscreen
+    const fullWidth = window.innerWidth;
+    const fullHeight = window.innerHeight - 120; // Account for bottom panel
+    
+    console.log('Canvas dimensions will be:', fullWidth, 'x', fullHeight);
+
     await app.init({
-        width: COLS * cellSize + 100,
-        height: ROWS * cellSize + 100,
+        width: fullWidth,
+        height: fullHeight,
         backgroundColor: 0x1e1e1e
     });
 
     // Add canvas to the container
     canvasContainer.appendChild(app.canvas);
 
-    // Load the sprite sheet
+    // Load all sprite sheets (symbols and background)
     await loadSprites();
+    await loadBackgroundSprites();
+
+    // Create the background
+    createBackground();
 
     // Create the grid
     createGrid();
 
     // Populate with initial symbols
     populateGrid();
+
+    // Start the background animation
+    startBackgroundAnimation();
 }
 
 async function loadSprites() {
@@ -124,13 +152,164 @@ async function loadSprites() {
     }
 }
 
+async function loadBackgroundSprites() {
+    try {
+        console.log('Starting to load background sprites...');
+        backgroundSpritesheets = [];
+
+        // Load all background sprite sheets (bg-0 through bg-5)
+        for (let i = 0; i <= 5; i++) {
+            const texturePath = `/bg/bg-${i}.png`;
+            const atlasPath = `/bg/bg-${i}.png.json`;
+
+            console.log(`Loading background texture: ${texturePath}`);
+            const texture = await Assets.load(texturePath);
+
+            console.log(`Loading background atlas: ${atlasPath}`);
+            const response = await fetch(atlasPath);
+            const atlasData = await response.json();
+
+            const spritesheet = new Spritesheet(texture, atlasData);
+            await spritesheet.parse();
+
+            backgroundSpritesheets.push(spritesheet);
+            console.log(`Background spritesheet ${i} loaded with frames:`, Object.keys(spritesheet.textures));
+        }
+
+        console.log('All background sprites loaded successfully');
+    } catch (error) {
+        console.error('Error loading background sprites:', error);
+        console.error('Error details:', error.message);
+    }
+}
+
+function createBackground() {
+    // Create container for the background
+    backgroundContainer = new Container();
+    
+    // Create the background sprite (start with first available intro frame)
+    const firstIntroFrame = getBackgroundFrame('intro_002.png'); // intro_001 seems missing
+    if (firstIntroFrame) {
+        backgroundSprite = new Sprite(firstIntroFrame);
+        
+        // Scale the background to cover the entire canvas (fullscreen)
+        const scaleX = app.screen.width / backgroundSprite.width;
+        const scaleY = app.screen.height / backgroundSprite.height;
+        const scale = Math.max(scaleX, scaleY); // Cover the entire screen
+        
+        backgroundSprite.scale.set(scale);
+        
+        // Center the background to cover the full screen
+        backgroundSprite.x = (app.screen.width - backgroundSprite.width * scale) / 2;
+        backgroundSprite.y = (app.screen.height - backgroundSprite.height * scale) / 2;
+        
+        backgroundContainer.addChild(backgroundSprite);
+        console.log('Fullscreen background sprite created successfully');
+        console.log(`Background size: ${backgroundSprite.width * scale} x ${backgroundSprite.height * scale}`);
+        console.log(`Screen size: ${app.screen.width} x ${app.screen.height}`);
+    } else {
+        console.error('Failed to create background sprite - no intro frame found');
+        // Try with a bg frame instead
+        const fallbackFrame = getBackgroundFrame('bg_001.png');
+        if (fallbackFrame) {
+            backgroundSprite = new Sprite(fallbackFrame);
+            const scaleX = app.screen.width / backgroundSprite.width;
+            const scaleY = app.screen.height / backgroundSprite.height;
+            const scale = Math.max(scaleX, scaleY);
+            backgroundSprite.scale.set(scale);
+            backgroundSprite.x = (app.screen.width - backgroundSprite.width * scale) / 2;
+            backgroundSprite.y = (app.screen.height - backgroundSprite.height * scale) / 2;
+            backgroundContainer.addChild(backgroundSprite);
+            console.log('Fullscreen background sprite created with fallback frame');
+        }
+    }
+    
+    // Add background container to stage (behind everything else)
+    app.stage.addChildAt(backgroundContainer, 0); // Ensure it's at the bottom layer
+}
+
+function getBackgroundFrame(frameName) {
+    // Search through all background spritesheets for the frame
+    for (const spritesheet of backgroundSpritesheets) {
+        if (spritesheet.textures[frameName]) {
+            return spritesheet.textures[frameName];
+        }
+    }
+    return null;
+}
+
+function startBackgroundAnimation() {
+    backgroundAnimationState = 'intro';
+    introFrameIndex = 2; // Start with intro_002.png (intro_001 seems missing)
+    bgFrameIndex = 1; // Start with bg_001.png when we get to looping
+    lastFrameTime = Date.now();
+    
+    // Debug: List all available frames
+    console.log('Available background frames:');
+    backgroundSpritesheets.forEach((spritesheet, index) => {
+        console.log(`Spritesheet ${index}:`, Object.keys(spritesheet.textures));
+    });
+    
+    // Start the animation loop
+    app.ticker.add(updateBackgroundAnimation);
+}
+
+function updateBackgroundAnimation() {
+    const currentTime = Date.now();
+    const frameDelay = 100; // ~10 FPS for smooth animation
+    
+    if (currentTime - lastFrameTime >= frameDelay) {
+        if (backgroundAnimationState === 'intro') {
+            // Play intro animation (intro_002.png to intro_012.png)
+            const frameName = `intro_${introFrameIndex.toString().padStart(3, '0')}.png`;
+            const frame = getBackgroundFrame(frameName);
+            
+            console.log(`Looking for intro frame: ${frameName}`, frame ? 'Found' : 'Not found');
+            
+            if (frame && backgroundSprite) {
+                backgroundSprite.texture = frame;
+            }
+            
+            introFrameIndex++;
+            
+            // Switch to looping background after intro is complete
+            if (introFrameIndex > 12) {
+                backgroundAnimationState = 'looping';
+                bgFrameIndex = 1;
+                console.log('Intro animation complete, starting background loop');
+            }
+        } else if (backgroundAnimationState === 'looping') {
+            // Play looping background animation (bg_001.png to bg_026.png)
+            const frameName = `bg_${bgFrameIndex.toString().padStart(3, '0')}.png`;
+            const frame = getBackgroundFrame(frameName);
+            
+            if (frame && backgroundSprite) {
+                backgroundSprite.texture = frame;
+            } else {
+                console.log(`Background frame not found: ${frameName}`);
+            }
+            
+            bgFrameIndex++;
+            
+            // Loop back to beginning (26 frames total, but skip 6 since it seems missing)
+            if (bgFrameIndex === 6) {
+                bgFrameIndex = 7; // Skip missing bg_006
+            } else if (bgFrameIndex > 26) {
+                bgFrameIndex = 1;
+            }
+        }
+        
+        lastFrameTime = currentTime;
+    }
+}
+
 function createGrid() {
     // Create container for the grid
     gridContainer = new Container();
 
-    // Center the grid
-    gridContainer.x = 50;
-    gridContainer.y = 50;
+    // Center the grid on the fullscreen canvas
+    gridContainer.x = (app.screen.width - (COLS * cellSize)) / 2;
+    gridContainer.y = (app.screen.height - (ROWS * cellSize)) / 2;
 
     // Create grid background cells
     for (let row = 0; row < ROWS; row++) {

@@ -11,7 +11,7 @@
     // Game info constants
     const gameName = "HURRICANE CHASE";
     const tagline = "Where volatile weather meets volatile winnings";
-    const maxWin = "5,000x";
+    const maxWin = "55,000x";
 
     // Helper function to format currency
     function formatCurrency(amount) {
@@ -159,18 +159,14 @@
                         <div class="light"></div>
                     </div>
                     <div class="button-holder spin-button-holder">
-                        <div
-                            class="spin-image-container"
-                            class:spinning={isSpinning}
-                        >
+                        <div class="spin-image-container">
                             <img
                                 src="/spin.png"
                                 alt="Spin"
                                 class="spin-image"
+                                class:spinning={isSpinning}
                             />
-                            <span class="spin-text"
-                                >{isSpinning ? "SPINNING..." : "SPIN"}</span
-                            >
+                            <span class="spin-text">SPIN</span>
                         </div>
                     </div>
                 </button>
@@ -504,7 +500,7 @@
                     <section class="info-section">
                         <h2 class="section-title general">GENERAL</h2>
                         <ul class="general-list">
-                            <li>Bet range: 10 to 100 coins</li>
+                            <li>Bet range: $0.10 to $1000 per spin</li>
                             <li>Max win: {maxWin}</li>
                             <li>15 fixed paylines</li>
                             <li>Wild symbols substitute for all symbols</li>
@@ -545,25 +541,33 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        padding: 20px;
+        padding: 0; /* Remove padding to eliminate gaps */
         min-height: 0;
     }
 
     .canvas-area {
         width: 100vw;
-        height: calc(100vh - 120px);
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        height: calc(100vh - 120px); /* Account for bottom control panel */
+        display: block; /* Changed from flex to block */
         position: relative;
+        overflow: hidden; /* Ensure background doesn't overflow */
+        margin: 0;
+        padding: 0;
     }
 
     canvas {
-        border: 2px solid #ffd700;
-        border-radius: 10px;
-        box-shadow: 0 0 30px rgba(255, 215, 0, 0.3);
-        max-width: 100%;
-        max-height: 100%;
+        /* Remove border and constraints to allow fullscreen background */
+        border: none;
+        border-radius: 0;
+        box-shadow: none;
+        width: 100vw !important;
+        height: calc(100vh - 120px) !important;
+        display: block;
+        margin: 0;
+        padding: 0;
+        position: absolute;
+        top: 0;
+        left: 0;
     }
 
     .win-notification {
@@ -762,13 +766,21 @@
     }
 
     .spin-light-button button.bt .light-holder {
-        width: 220px;
-        height: 140px;
+        width: 120px;
+        height: 120px;
+        top: -15px; /* Position light above the button */
+        left: 50%; /* Center horizontally */
+        transform: translateX(-50%); /* Perfect center alignment */
     }
 
     .spin-light-button button.bt .light-holder .light {
-        width: 260px;
-        height: 140px;
+        width: 140px;
+        height: 120px;
+        top: 0;
+    }
+
+    .spin-light-button button.bt .light-holder .dot {
+        top: -5px; /* Position dot at the tip of the light */
     }
 
     .spin-image-container {
@@ -777,12 +789,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
-        transition: transform 0.3s ease;
         position: relative;
-    }
-
-    .spin-image-container.spinning {
-        animation: spin-clockwise 1s linear infinite;
     }
 
     .spin-image {
@@ -790,6 +797,11 @@
         height: 110px;
         object-fit: contain;
         filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+        transition: transform 0.3s ease;
+    }
+
+    .spin-image.spinning {
+        animation: spin-clockwise 1s linear infinite;
     }
 
     .spin-text {
